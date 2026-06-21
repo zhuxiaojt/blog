@@ -1,0 +1,774 @@
+name: Post article
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: '文章标题'
+        required: true
+        type: string
+        default: '测试文章'
+      date:
+        description: '发布时间（留空则自动生成）'
+        required: false
+        type: string
+        default: ''
+      filename:
+        description: '输出文件名（如：1.html）'
+        required: false
+        type: string
+        default: '1.html'
+      seo_description:
+        description: '描述（留空则不做SEO优化）'
+        required: false
+        type: string
+        default: ''
+      seo_keywords:
+        description: '关键词（逗号分隔，留空则不做SEO优化）'
+        required: false
+        type: string
+        default: ''
+      seo_author:
+        description: '作者（留空则不做SEO优化）'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    
+    - name: Install dependencies
+      run: |
+        npm install --no-save marked@11.1.1 katex@0.16.9 highlight.js@11.9.0
+    
+    - name: Setup config.json
+      run: |
+        cat > ${{ github.workspace }}/setup-config.js << 'EOF'
+        const fs = require('fs');
+        
+        const configPath = '${{ github.workspace }}/config.json';
+        const repoName = '${{ github.event.repository.name }}';
+        const owner = '${{ github.repository_owner }}';
+        
+        const isUserPage = repoName === `${owner}.github.io`;
+        let baseUrl = isUserPage 
+          ? `https://${owner}.github.io` 
+          : `https://${owner}.github.io/${repoName}`;
+        
+        let config = {};
+        if (fs.existsSync(configPath)) {
+          try {
+            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+          } catch (_) {}
+        }
+        
+        if (!config.baseUrl) {
+          config.baseUrl = baseUrl;
+          fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+          console.log(`✅ 写入 baseUrl: ${baseUrl}`);
+        } else {
+          console.log(`ℹ️ 使用现有 baseUrl: ${config.baseUrl}`);
+        }
+        
+        const outputPath = process.env.GITHUB_OUTPUT;
+        if (outputPath) {
+          fs.appendFileSync(outputPath, `baseUrl=${config.baseUrl}\n`);
+        }
+        EOF
+        
+        node ${{ github.workspace }}/setup-config.js
+    
+    - name: Create static template
+      run: |
+        cat > ${{ github.workspace }}/template-action.html << 'TEMPLATE_EOF'
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{{TITLE}}</title>
+            {{SEO_TAGS}}
+            <style>
+              * {margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;}
+              body {
+                min-height: 100vh;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                color: #333;
+                padding-top: 70px; 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 30px;
+              }
+              .top-nav {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.8);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(108, 99, 255, 0.1);
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 20px;
+                z-index: 999;
+              }
+              .nav-menu {
+                display: flex;
+                gap: 24px;
+              }
+              .nav-menu a {
+                color: #555;
+                text-decoration: none;
+                font-size: 14px;
+                padding: 8px 0;
+                position: relative;
+                transition: color 0.2s;
+              }
+              .nav-menu a::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 0;
+                height: 2px;
+                background: #6c63ff;
+                transition: width 0.2s;
+              }
+              .nav-menu a:hover {
+                color: #6c63ff;
+              }
+              .nav-menu a:hover::after {
+                width: 100%;
+              }
+              .nav-menu a.active {
+                color: #6c63ff;
+              }
+              .nav-menu a.active::after {
+                width: 100%;
+              }
+              .appmain {
+                width: 100%;
+                max-width: 800px;
+                background: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border-radius: 12px;
+                padding: 30px;
+                box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+                margin: 0 auto;
+                overflow: hidden;
+              }
+              .markdown-render {
+                padding: 0;
+                overflow-y: auto;
+              }
+              .markdown-render h1 {
+                font-size: 24px;
+                color: #333;
+                margin: 16px 0;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 8px;
+              }
+              .markdown-render h2 {
+                font-size: 20px;
+                color: #333;
+                margin: 14px 0;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 6px;
+              }
+              .markdown-render h3 {
+                font-size: 18px;
+                color: #333;
+                margin: 12px 0;
+              }
+              .markdown-render p {
+                margin: 8px 0;
+                line-height: 1.8;
+              }
+              .markdown-render ul, .markdown-render ol {
+                margin: 8px 0 8px 24px;
+                line-height: 1.8;
+              }
+              .markdown-render code {
+                padding: 2px 6px;
+                background: #f5f5f5;
+                border-radius: 4px;
+                font-family: Consolas, Monaco, 'Courier New', monospace;
+                font-size: 13px;
+              }
+              .markdown-render pre {
+                padding: 16px;
+                background: #f8f8f8;
+                border-radius: 8px;
+                overflow-x: auto;
+                margin: 12px 0;
+                font-family: Consolas, Monaco, 'Courier New', monospace;
+                font-size: 13px;
+              }
+              .markdown-render pre code {
+                padding: 0;
+                background: transparent;
+                font-family: Consolas, Monaco, 'Courier New', monospace;
+                font-size: 13px;
+              }
+              .markdown-render blockquote {
+                border-left: 4px solid #6c63ff;
+                padding: 8px 16px;
+                background: #f9f9f9;
+                margin: 12px 0;
+              }
+              .markdown-render a {
+                color: #6c63ff;
+                text-decoration: none;
+              }
+              .markdown-render a:hover {
+                text-decoration: underline;
+              }
+              .markdown-render img {
+                max-width: 100%;
+                border-radius: 8px;
+                margin: 12px 0;
+              }
+              .markdown-render table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 16px 0;
+              }
+              .markdown-render th, .markdown-render td {
+                border: 1px solid #e0e0e0;
+                padding: 8px 12px;
+                text-align: left;
+              }
+              .markdown-render th {
+                background: #f5f5f5;
+              }
+              .katex-error {
+                color: #e74c3c;
+                background: #fde8e8;
+                padding: 2px 6px;
+                border-radius: 4px;
+              }
+            </style>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+          </head>
+          <body>
+            <nav class="top-nav">
+              <div class="nav-menu" id="navMenu">
+                <a href="./" target="_self">首页</a>
+              </div>
+            </nav>
+            <div class="appmain" style="max-width: 800px;">
+              <h1 class="blog-title" id="blog-title">{{TITLE}}</h1>
+              <div class="blog-meta" id="blog-meta" style="color:gray;font-family:Consolas;">{{DATE}}</div>
+              <div class="markdown-render" id="markdownRender">
+                {{CONTENT}}
+              </div>
+            </div>
+            
+            <script>
+              document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.markdown-render pre code').forEach(function(block) {
+                  if (window.hljs) {
+                    hljs.highlightElement(block);
+                  }
+                });
+              });
+            </script>
+          </body>
+        </html>
+        TEMPLATE_EOF
+        
+        echo "✅ template-action.html created"
+    
+    - name: Check staging.md exists
+      run: |
+        if [ ! -f "${{ github.workspace }}/staging.md" ]; then
+          echo "❌ staging.md 不存在，请创建该文件"
+          exit 1
+        fi
+        echo "✅ staging.md 存在"
+    
+    - name: Generate HTML and update blogs.json
+      run: |
+        cat > ${{ github.workspace }}/render.js << 'EOF'
+        const fs = require('fs');
+        const { marked } = require('marked');
+        const katex = require('katex');
+        const hljs = require('highlight.js');
+        
+        // 获取输入参数
+        const title = '${{ github.event.inputs.title }}';
+        const userDate = '${{ github.event.inputs.date }}'.trim();
+        const seoDescription = '${{ github.event.inputs.seo_description }}'.trim();
+        const seoKeywords = '${{ github.event.inputs.seo_keywords }}'.trim();
+        const seoAuthor = '${{ github.event.inputs.seo_author }}'.trim();
+        const filename = '${{ github.event.inputs.filename }}';
+        
+        // 从 staging.md 读取 Markdown 内容
+        const markdownFilePath = 'staging.md';
+        let markdownContent = '';
+        try {
+          markdownContent = fs.readFileSync(markdownFilePath, 'utf8');
+          console.log(`✅ 读取文件: ${markdownFilePath}`);
+        } catch (err) {
+          console.error(`❌ 读取文件失败: ${markdownFilePath}`);
+          console.error(err.message);
+          process.exit(1);
+        }
+        
+        // 读取 config.json
+        let baseUrl = '';
+        let siteName = 'Blog';
+        try {
+          const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+          baseUrl = config.baseUrl || '';
+          siteName = config.siteName || 'Blog';
+        } catch (_) {}
+        if (!baseUrl) {
+          const owner = '${{ github.repository_owner }}';
+          const repoName = '${{ github.event.repository.name }}';
+          baseUrl = repoName === `${owner}.github.io` 
+            ? `https://${owner}.github.io` 
+            : `https://${owner}.github.io/${repoName}`;
+        }
+        const url = `${baseUrl}/${filename}`;
+        
+        // 处理日期
+        let date = userDate;
+        let dateFormatted = '';
+        if (!date) {
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = String(now.getMonth() + 1).padStart(2, '0');
+          const d = String(now.getDate()).padStart(2, '0');
+          const h = String(now.getHours()).padStart(2, '0');
+          const min = String(now.getMinutes()).padStart(2, '0');
+          date = `${y}-${m}-${d} ${h}:${min}`;
+          dateFormatted = `${y}-${m}-${d}`;
+        } else {
+          const d = new Date(date);
+          if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            dateFormatted = `${y}-${m}-${day}`;
+          } else {
+            dateFormatted = date;
+          }
+        }
+        
+        // 配置 marked
+        marked.setOptions({
+          highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+              try { return hljs.highlight(code, { language: lang }).value; } catch (_) {}
+            }
+            try { return hljs.highlightAuto(code).value; } catch (_) {}
+            return code;
+          },
+          gfm: true,
+          breaks: true
+        });
+        
+        // 渲染 Markdown + LaTeX
+        function renderMarkdownWithKaTeX(content) {
+          let mathBlocks = [];
+          let processed = content.replace(/\$\$(.*?)\$\$/gs, (_, c) => {
+            const idx = mathBlocks.length;
+            mathBlocks.push(c);
+            return `[[KATEX_BLOCK_${idx}]]`;
+          });
+          let mathInlines = [];
+          processed = processed.replace(/(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)/g, (_, c) => {
+            const idx = mathInlines.length;
+            mathInlines.push(c);
+            return `[[KATEX_INLINE_${idx}]]`;
+          });
+          let html = marked.parse(processed);
+          html = html.replace(/\[\[KATEX_BLOCK_(\d+)\]\]/g, (_, idx) => {
+            try {
+              return katex.renderToString(mathBlocks[parseInt(idx)], { displayMode: true, throwOnError: false });
+            } catch (_) { return `<div class="katex-error">公式渲染失败</div>`; }
+          });
+          html = html.replace(/\[\[KATEX_INLINE_(\d+)\]\]/g, (_, idx) => {
+            try {
+              return katex.renderToString(mathInlines[parseInt(idx)], { displayMode: false, throwOnError: false });
+            } catch (_) { return `<span class="katex-error">公式渲染失败</span>`; }
+          });
+          return html;
+        }
+        
+        // 生成 SEO 标签
+        function generateSEOTags(desc, keywords, author, url, title, date) {
+          if (!desc && !keywords && !author) return '';
+          let tags = '';
+          if (desc) tags += `    <meta name="description" content="${desc}">\n`;
+          if (keywords) tags += `    <meta name="keywords" content="${keywords}">\n`;
+          if (author) tags += `    <meta name="author" content="${author}">\n`;
+          tags += `    <meta name="robots" content="index, follow">\n`;
+          if (desc) tags += `    <meta property="og:description" content="${desc}">\n`;
+          if (author) tags += `    <meta property="article:author" content="${author}">\n`;
+          tags += `    <meta property="og:type" content="article">\n`;
+          tags += `    <meta property="og:title" content="${title}">\n`;
+          tags += `    <meta property="og:url" content="${url}">\n`;
+          tags += `    <meta property="og:site_name" content="${siteName}">\n`;
+          tags += `    <meta property="og:locale" content="zh_CN">\n`;
+          tags += `    <meta property="article:published_time" content="${date}">\n`;
+          tags += `    <meta property="article:modified_time" content="${date}">\n`;
+          if (desc) {
+            tags += `    <meta name="twitter:card" content="summary_large_image">\n`;
+            tags += `    <meta name="twitter:title" content="${title}">\n`;
+            tags += `    <meta name="twitter:description" content="${desc}">\n`;
+          }
+          tags += `    <link rel="canonical" href="${url}">\n`;
+          if (desc || author) {
+            tags += `    <script type="application/ld+json">\n`;
+            tags += `    {\n`;
+            tags += `      "@context": "https://schema.org",\n`;
+            tags += `      "@type": "Article",\n`;
+            tags += `      "headline": "${title}",\n`;
+            if (desc) tags += `      "description": "${desc}",\n`;
+            if (author) {
+              tags += `      "author": { "@type": "Person", "name": "${author}" },\n`;
+            }
+            tags += `      "datePublished": "${date}",\n`;
+            tags += `      "dateModified": "${date}",\n`;
+            tags += `      "mainEntityOfPage": { "@type": "WebPage", "@id": "${url}" }\n`;
+            tags += `    }\n`;
+            tags += `    </script>\n`;
+          }
+          return tags;
+        }
+        
+        const renderedHtml = renderMarkdownWithKaTeX(markdownContent);
+        const seoTags = generateSEOTags(seoDescription, seoKeywords, seoAuthor, url, title, date);
+        
+        // 读取模板并替换占位符
+        let template = fs.readFileSync('template-action.html', 'utf8');
+        template = template.replace(/\{\{TITLE\}\}/g, title);
+        template = template.replace(/\{\{DATE\}\}/g, date);
+        template = template.replace(/\{\{CONTENT\}\}/g, renderedHtml);
+        template = template.replace(/\{\{SEO_TAGS\}\}/g, seoTags);
+        
+        // 写入 HTML 文件
+        const outputFile = filename;
+        fs.writeFileSync(outputFile, template, 'utf8');
+        console.log(`✅ HTML generated: ${outputFile}`);
+        
+        // ====== 更新 blogs.json ======
+        const blogsPath = 'blogs.json';
+        let blogs = [];
+        if (fs.existsSync(blogsPath)) {
+          try { blogs = JSON.parse(fs.readFileSync(blogsPath, 'utf8')); } catch (_) {}
+        }
+        
+        const newPost = {
+          title: title,
+          filename: filename,
+          date: date,
+          dateFormatted: dateFormatted,
+          url: url,
+          description: seoDescription || '',
+          keywords: seoKeywords || '',
+          author: seoAuthor || '',
+          createdAt: new Date().toISOString()
+        };
+        
+        const idx = blogs.findIndex(p => p.filename === filename);
+        if (idx !== -1) {
+          blogs[idx] = { ...blogs[idx], ...newPost };
+          console.log(`🔄 更新文章: ${filename}`);
+        } else {
+          blogs.push(newPost);
+          console.log(`✅ 添加新文章: ${filename}`);
+        }
+        blogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+        fs.writeFileSync(blogsPath, JSON.stringify(blogs, null, 2), 'utf8');
+        console.log(`📝 已更新 blogs.json (共 ${blogs.length} 篇)`);
+        EOF
+        
+        node ${{ github.workspace }}/render.js
+    
+    - name: Clear staging.md
+      run: |
+        > "${{ github.workspace }}/staging.md"
+        echo "✅ staging.md 已清空"
+    
+    - name: Create blog list page
+      run: |
+        cat > ${{ github.workspace }}/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>博客列表</title>
+            <style>
+              * {margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;}
+              body {
+                min-height: 100vh;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                color: #333;
+                padding-top: 70px; 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 30px;
+                padding-bottom: 40px;
+              }
+              .top-nav {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.8);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(108, 99, 255, 0.1);
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 20px;
+                z-index: 999;
+              }
+              .nav-menu {
+                display: flex;
+                gap: 24px;
+              }
+              .nav-menu a {
+                color: #555;
+                text-decoration: none;
+                font-size: 14px;
+                padding: 8px 0;
+                position: relative;
+                transition: color 0.2s;
+              }
+              .nav-menu a::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 0;
+                height: 2px;
+                background: #6c63ff;
+                transition: width 0.2s;
+              }
+              .nav-menu a:hover {
+                color: #6c63ff;
+              }
+              .nav-menu a:hover::after {
+                width: 100%;
+              }
+              .nav-menu a.active {
+                color: #6c63ff;
+              }
+              .nav-menu a.active::after {
+                width: 100%;
+              }
+              .appmain {
+                width: 100%;
+                max-width: 800px;
+                background: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border-radius: 12px;
+                padding: 30px;
+                box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+                margin: 0 20px;
+                overflow: hidden;
+              }
+              .blog-list { display: flex; flex-direction: column; gap: 24px; }
+              .blog-item {
+                display: flex;
+                gap: 20px;
+                padding: 16px;
+                border-radius: 8px;
+                transition: background 0.2s ease;
+                cursor: pointer;
+                text-decoration: none;
+                color: inherit;
+                border: 1px solid transparent;
+              }
+              .blog-item:hover {
+                background: rgba(108, 99, 255, 0.05);
+                border-color: rgba(108, 99, 255, 0.1);
+              }
+              .blog-item .thumbnail {
+                flex-shrink: 0;
+                width: 100px;
+                height: 100px;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #f0f0f0;
+              }
+              .blog-item .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+              .blog-item .thumbnail.hidden { display: none; }
+              .blog-item .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+              .blog-item .title {
+                font-size: 18px;
+                font-weight: 700;
+                color: #333;
+                line-height: 1.4;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+              }
+              .blog-item .title:hover { color: #6c63ff; }
+              .blog-item .keywords {
+                font-size: 13px;
+                color: #999;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .blog-item .keywords .keyword { display: inline-block; }
+              .blog-item .keywords .keyword:not(:last-child)::after { content: ' · '; }
+              .blog-item .description {
+                font-size: 14px;
+                color: #888;
+                line-height: 1.6;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+              }
+              .blog-item .meta {
+                font-size: 13px;
+                color: #aaa;
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+              }
+              .loading { text-align: center; padding: 40px 0; color: #888; font-size: 14px; }
+              .empty { text-align: center; padding: 40px 0; color: #aaa; font-size: 14px; }
+              .error { text-align: center; padding: 40px 0; color: #e74c3c; font-size: 14px; }
+              @media (max-width: 640px) {
+                .blog-item { flex-direction: column; gap: 12px; padding: 12px; }
+                .blog-item .thumbnail { width: 100%; height: 180px; }
+                .appmain { padding: 16px; margin: 0 10px; }
+                .blog-item .title { font-size: 16px; }
+                .blog-item .meta { font-size: 12px; gap: 10px; }
+              }
+            </style>
+          </head>
+          <body>
+            <nav class="top-nav">
+              <div class="nav-menu">
+                <a href="./" target="_self" class="active">首页</a>
+              </div>
+            </nav>
+            <div class="appmain">
+              <div id="blogList"><div class="loading">加载中...</div></div>
+            </div>
+            <script>
+              (async function() {
+                const container = document.getElementById('blogList');
+                try {
+                  const resp = await fetch('./blogs.json');
+                  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                  const data = await resp.json();
+                  if (!data || data.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无文章</div>';
+                    return;
+                  }
+                  let html = '<div class="blog-list">';
+                  data.forEach(function(post) {
+                    let kwHtml = '';
+                    if (post.keywords) {
+                      const kw = post.keywords.split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k; });
+                      kwHtml = kw.map(function(k) { return '<span class="keyword">' + k + '</span>'; }).join('');
+                    }
+                    let thumbClass = 'thumbnail';
+                    let thumbHtml = '';
+                    if (post.thumbnail) {
+                      thumbHtml = '<img src="' + post.thumbnail + '" alt="' + post.title + '">';
+                    } else {
+                      thumbClass += ' hidden';
+                    }
+                    const displayDate = post.dateFormatted || post.date || '';
+                    html += '<a href="' + post.filename + '" class="blog-item">';
+                    html += '  <div class="' + thumbClass + '">' + thumbHtml + '</div>';
+                    html += '  <div class="content">';
+                    html += '    <div class="title">' + post.title + '</div>';
+                    if (kwHtml) html += '    <div class="keywords">' + kwHtml + '</div>';
+                    if (post.description) html += '    <div class="description">' + post.description + '</div>';
+                    html += '    <div class="meta">';
+                    if (displayDate) html += '      <span>' + displayDate + '</span>';
+                    if (post.author) html += '      <span>' + post.author + '</span>';
+                    html += '    </div>';
+                    html += '  </div>';
+                    html += '</a>';
+                  });
+                  html += '</div>';
+                  container.innerHTML = html;
+                } catch (err) {
+                  console.error('加载失败:', err);
+                  container.innerHTML = '<div class="error">加载失败，请刷新重试</div>';
+                }
+              })();
+            </script>
+          </body>
+        </html>
+        EOF
+        
+        echo "✅ index.html created"
+    
+    - name: List generated files
+      run: |
+        echo "Generated files:"
+        ls -la "${{ github.workspace }}/${{ github.event.inputs.filename }}"
+        ls -la "${{ github.workspace }}/index.html"
+        echo ""
+        echo "staging.md status:"
+        cat "${{ github.workspace }}/staging.md" | head -n 5 || echo "（已清空）"
+        echo ""
+        echo "config.json:"
+        cat "${{ github.workspace }}/config.json"
+        echo ""
+        echo "blogs.json (first 30 lines):"
+        cat "${{ github.workspace }}/blogs.json" | head -n 30
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: generated-html
+        path: |
+          ${{ github.workspace }}/${{ github.event.inputs.filename }}
+          ${{ github.workspace }}/index.html
+          ${{ github.workspace }}/blogs.json
+          ${{ github.workspace }}/config.json
+    
+    - name: Commit and push
+      run: |
+        cd "${{ github.workspace }}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add "${{ github.event.inputs.filename }}" index.html blogs.json config.json staging.md
+        git commit -m "Post article: ${{ github.event.inputs.title }}" || echo "No changes to commit"
+        git push || echo "Push failed or no changes"
