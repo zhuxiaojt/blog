@@ -1,6 +1,3 @@
----
-theme: keepnice
----
 ## 实测数据
 
 我在 Windows 环境下，使用 PowerShell 的 `Measure-Command` 对 pnpm 命令进行了计时测试。
