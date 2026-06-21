@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>如何用tkinter创建一个适合操作的自定义标题栏窗口</title>
+        <meta name="description" content="如何用tkinter创建一个适合操作的自定义标题栏窗口">
+    <meta name="keywords" content="Python">
+    <meta name="author" content="zhuxiaojt">
+    <meta name="robots" content="index, follow">
+    <meta property="og:description" content="如何用tkinter创建一个适合操作的自定义标题栏窗口">
+    <meta property="article:author" content="zhuxiaojt">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="如何用tkinter创建一个适合操作的自定义标题栏窗口">
+    <meta property="og:url" content="https://zhuxiaojt.github.io/blog/1.html">
+    <meta property="og:site_name" content="Blog">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="article:published_time" content="2025-11-24">
+    <meta property="article:modified_time" content="2025-11-24">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="如何用tkinter创建一个适合操作的自定义标题栏窗口">
+    <meta name="twitter:description" content="如何用tkinter创建一个适合操作的自定义标题栏窗口">
+    <link rel="canonical" href="https://zhuxiaojt.github.io/blog/1.html">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "如何用tkinter创建一个适合操作的自定义标题栏窗口",
+      "description": "如何用tkinter创建一个适合操作的自定义标题栏窗口",
+      "author": { "@type": "Person", "name": "zhuxiaojt" },
+      "datePublished": "2025-11-24",
+      "dateModified": "2025-11-24",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://zhuxiaojt.github.io/blog/1.html" }
+    }
+    </script>
+
+    <style>
+      * {margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;}
+      body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        color: #333;
+        padding-top: 70px; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+      }
+      .top-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(108, 99, 255, 0.1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        z-index: 999;
+      }
+      .nav-menu {
+        display: flex;
+        gap: 24px;
+      }
+      .nav-menu a {
+        color: #555;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 8px 0;
+        position: relative;
+        transition: color 0.2s;
+      }
+      .nav-menu a::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #6c63ff;
+        transition: width 0.2s;
+      }
+      .nav-menu a:hover {
+        color: #6c63ff;
+      }
+      .nav-menu a:hover::after {
+        width: 100%;
+      }
+      .nav-menu a.active {
+        color: #6c63ff;
+      }
+      .nav-menu a.active::after {
+        width: 100%;
+      }
+      .appmain {
+        width: 100%;
+        max-width: 800px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        margin: 0 auto;
+        overflow: hidden;
+      }
+      .markdown-render {
+        padding: 0;
+        overflow-y: auto;
+      }
+      .markdown-render h1 {
+        font-size: 24px;
+        color: #333;
+        margin: 16px 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+      }
+      .markdown-render h2 {
+        font-size: 20px;
+        color: #333;
+        margin: 14px 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 6px;
+      }
+      .markdown-render h3 {
+        font-size: 18px;
+        color: #333;
+        margin: 12px 0;
+      }
+      .markdown-render p {
+        margin: 8px 0;
+        line-height: 1.8;
+      }
+      .markdown-render ul, .markdown-render ol {
+        margin: 8px 0 8px 24px;
+        line-height: 1.8;
+      }
+      .markdown-render code {
+        padding: 2px 6px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      .markdown-render pre {
+        padding: 16px;
+        background: #f8f8f8;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 12px 0;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      .markdown-render pre code {
+        padding: 0;
+        background: transparent;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      .markdown-render blockquote {
+        border-left: 4px solid #6c63ff;
+        padding: 8px 16px;
+        background: #f9f9f9;
+        margin: 12px 0;
+      }
+      .markdown-render a {
+        color: #6c63ff;
+        text-decoration: none;
+      }
+      .markdown-render a:hover {
+        text-decoration: underline;
+      }
+      .markdown-render img {
+        max-width: 100%;
+        border-radius: 8px;
+        margin: 12px 0;
+      }
+      .markdown-render table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 16px 0;
+      }
+      .markdown-render th, .markdown-render td {
+        border: 1px solid #e0e0e0;
+        padding: 8px 12px;
+        text-align: left;
+      }
+      .markdown-render th {
+        background: #f5f5f5;
+      }
+      .katex-error {
+        color: #e74c3c;
+        background: #fde8e8;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <div class="nav-menu" id="navMenu">
+        <a href="./" target="_self">首页</a>
+      </div>
+    </nav>
+    <div class="appmain" style="max-width: 800px;">
+      <h1 class="blog-title" id="blog-title">如何用tkinter创建一个适合操作的自定义标题栏窗口</h1>
+      <div class="blog-meta" id="blog-meta" style="color:gray;font-family:Consolas;">2025-11-24</div>
+      <div class="markdown-render" id="markdownRender">
+        <p> 众所周知，在Python中，有一个经典的GUI库叫<code>tkinter</code>，<code>tkinter</code>的操作十分简单，且包含在标准库中，所以很多人（尤其是新手）都喜欢使用<code>tkinter</code>来创建界面</p>
+<p>但是<code>tkinter</code>的限制十分的多，所以一般大型项目都不会使用<code>tkinter</code>来作为窗口框架，而是使用像PyQt5之类的更高级的第三方库来创建界面</p>
+<p>又众所周知，许多软件都不喜欢使用Windows自带的标题栏，而是会自己制作一个，这样的标题栏自由度更高，开发者想加什么就加什么，但是<code>tkinter</code>如果去掉自带的标题栏，就会带来很多不便，所以，我们要挑战用<code>tkinter</code>制作一个自定义标题栏窗口，并且像正常窗口一样可以使用</p>
+<hr>
+<p>（这里假设你对<code>tkinter</code>有过了解，并且只使用Windows）</p>
+<hr>
+<h4>任务栏图标</h4>
+<p>首先，<code>tkinter</code>隐藏自带标题栏的第一个问题，就是任务栏图标</p>
+<p>普通窗口都是有任务栏图标的，但是我们一给窗口一个<code>overrideredirect</code>，任务栏图标就消失了</p>
+<p>那么我就很快想到了一个方法：创建一个有标题栏的全透明主窗口，来创造一个“假的”任务栏图标，用来操作自定义窗口</p>
+<p>不过我们还得处理窗口事件同步，所以我们需要对自定义窗口使用一个<code>transient</code>，作为透明主窗口的附属窗口，用来同步一些类似最小化、关闭的事件</p>
+<p>于是我们就有了这样的代码：</p>
+<pre><code class="language-python">from tkinter import *
+def create_gui():
+    root=Tk()
+    root.title(&quot;标题&quot;)
+    root.geometry(&quot;500x0&quot;)
+    root.attributes(&quot;-alpha&quot;,0.0)#透明窗口
+    lgwin=Toplevel(root)
+    lgwin.title(&quot;虽然这个标题不会显示但是还是设一下&quot;)
+    lgwin.geometry(&quot;1000x800&quot;)
+    lgwin.transient(root)
+    lgwin.overrideredirect(True)#无标题
+    lgwin.attributes(&quot;-alpha&quot;,1.0)#因为root是全透明的，为了防止透明属性被lgwin继承所以单独设置
+    def on_root_focus(event):
+        if lgwin and lgwin.winfo_exists():
+            lgwin.lift()
+            lgwin.focus_force()
+    root.bind(&quot;&lt;FocusIn&gt;&quot;, on_root_focus)#点击任务栏图标时让lgwin获得焦点
+    return root,lgwin
+#这个代码是从我的一个项目中截取的，这时gui.py的一部分，启动主循环在main.py
+</code></pre>
+<h4>关闭、最小化、最大化</h4>
+<p>由于没有了系统提供的标题栏，我们需要自己定义一个，来实现系统标题栏的功能</p>
+<p>这里使用Canvas来实现标题栏。</p>
+<p>我们需要在标题栏右边放按钮，为了防止窗口大小改变，需要每次窗口大小改变时都重绘标题栏</p>
+<p>关闭很好实现，直接<code>root.destroy()</code>就行，最小化也是直接<code>root.iconify()</code>就行</p>
+<p>主要是最大化，我们需要获得屏幕工作区大小（不包含任务栏的屏幕大小），这里我们使用<code>ctypes</code>来获取</p>
+<pre><code class="language-python">import ctypes
+from ctypes import wintypes
+def get_workarea_size():
+    user32 = ctypes.windll.user32
+    SPI_GETWORKAREA = 0x0030
+    rect = wintypes.RECT()
+    success = user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+    if not success:
+        return 1920, 1080
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+</code></pre>
+<p>为了还原窗口，我们需要记录最大化之前的窗口大小</p>
+<p>那么代码如下：</p>
+<pre><code class="language-python">from tkinter import *
+import ctypes
+from ctypes import wintypes
+def get_workarea_size():
+    user32 = ctypes.windll.user32
+    SPI_GETWORKAREA = 0x0030
+    rect = wintypes.RECT()
+    success = user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+    if not success:
+        return 1920, 1080
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+
+    return width, height
+def create_gui():
+    root=Tk()
+    root.title(&quot;LGAPP&quot;)
+    root.geometry(&quot;500x0&quot;)
+    root.attributes(&quot;-alpha&quot;,0.0)
+    lgwin=Toplevel(root)
+    lgwin.title(&quot;LGAPP&quot;)
+    lgwin.geometry(&quot;1000x800&quot;)
+    lgwin.transient(root)
+    lgwin.overrideredirect(True)
+    lgwin.attributes(&quot;-alpha&quot;,1.0)
+    lgwin.config(bg=&quot;#ffffff&quot;)
+    ismax=False#是否最大化
+    presize=(1000,800,0,0)#记录原来的窗口大小，这里需要有一个默认值
+    def on_root_focus(event):
+        if lgwin and lgwin.winfo_exists():
+            lgwin.lift()
+            lgwin.focus_force()
+    root.bind(&quot;&lt;FocusIn&gt;&quot;, on_root_focus)
+    titlebar=Canvas(lgwin,height=30,bg=&quot;#f0f0f0&quot;)#标题栏
+    titlebar.pack(side=TOP,fill=X)
+    def draw_titlebar():
+        nonlocal ismax
+        if ismax:
+            maxtxt=&quot;❐&quot;#最大化时显示还原按钮图标
+            maxsz=10#还原图标大一些所以字号设为10
+        else:
+            maxtxt=&quot;□&quot;#没有最大化时显示最大化图标
+            maxsz=15
+        titlebar.delete(&quot;all&quot;)
+        winwidth=lgwin.winfo_width()
+        titlebar.create_rectangle(winwidth-30,0,winwidth,30,fill=&quot;#f0f0f0&quot;,outline=&quot;#f0f0f0&quot;,tags=&quot;close_btn&quot;)#设置tag方便识别
+        titlebar.create_text(winwidth-15,15,text=&quot;×&quot;,font=(&quot;consolas&quot;,15),fill=&quot;#000000&quot;)
+        titlebar.create_rectangle(winwidth-60,0,winwidth-30,30,fill=&quot;#f0f0f0&quot;,outline=&quot;#f0f0f0&quot;,tags=&quot;max_btn&quot;)
+        titlebar.create_text(winwidth-45,15,text=maxtxt,font=(&quot;consolas&quot;,maxsz),fill=&quot;#000000&quot;)
+        titlebar.create_rectangle(winwidth-90,0,winwidth-60,30,fill=&quot;#f0f0f0&quot;,outline=&quot;#f0f0f0&quot;,tags=&quot;min_btn&quot;)
+        titlebar.create_text(winwidth-75,15,text=&quot;—&quot;,font=(&quot;consolas&quot;,13),fill=&quot;#000000&quot;)
+        lgwin.update()
+    lgwin.after(100,draw_titlebar)
+    lgwin.bind(&quot;&lt;Configure&gt;&quot;, lambda e: draw_titlebar())#绑定窗口事件用来重绘标题栏
+    def close_window():
+        root.destroy()
+    def max_window():
+        nonlocal ismax,presize
+        ismax=not ismax#切换状态
+        if ismax:
+            try:
+                presize=(lgwin.winfo_width(),lgwin.winfo_height(),lgwin.winfo_x(),lgwin.winfo_y())#设置最大化前的窗口大小和位置
+                work_w,work_h=get_workarea_size()#获得工作区大小
+                lgwin.geometry(f&quot;{work_w}x{work_h}+0+0&quot;)
+            except:
+                pass
+        else:
+            lgwin.geometry(f&quot;{presize[0]}x{presize[1]}+{presize[2]}+{presize[3]}&quot;)#还原窗口 
+    def min_window():
+        root.iconify()
+    def on_titlebar_click(event):
+        clkitems=titlebar.find_overlapping(event.x,event.y,event.x,event.y)
+        for item in clkitems:
+            tags=titlebar.gettags(item)#根据tag识别点击了什么按钮
+            if &quot;close_btn&quot; in tags:
+                close_window()
+            elif &quot;max_btn&quot; in tags:
+                max_window()
+            elif &quot;min_btn&quot; in tags:
+                min_window()
+    def on_mouse_move(event):#悬停效果
+        draw_titlebar()
+        items = titlebar.find_overlapping(event.x, event.y, event.x, event.y)
+        for item in items:
+            tags=titlebar.gettags(item)
+            if &quot;close_btn&quot; in tags:
+                titlebar.itemconfig(item,fill=&quot;#ffaaaa&quot;)
+            elif &quot;max_btn&quot; in tags:
+                titlebar.itemconfig(item,fill=&quot;#e0e0e0&quot;)
+            elif &quot;min_btn&quot; in tags:
+                titlebar.itemconfig(item,fill=&quot;#e0e0e0&quot;)
+    titlebar.bind(&quot;&lt;Motion&gt;&quot;, on_mouse_move)
+    lgwin.bind(&quot;&lt;ButtonRelease-1&gt;&quot;, on_titlebar_click)#这里为了兼容后面的拖动功能所以绑定的是鼠标松开事件
+    return root,lgwin,titlebar
+</code></pre>
+<h4>拖动窗口</h4>
+<p>一个窗口不能总在一个位置，所以我们需要添加一个拖动功能</p>
+<p>拖动时需要记录鼠标相对窗口的偏移量，然后根据鼠标位置和偏移量设置窗口位置</p>
+<p>OK这一部分还好，那么直接上代码：</p>
+<pre><code class="language-python">from tkinter import *
+import ctypes
+from ctypes import wintypes
+def get_workarea_size():
+    user32 = ctypes.windll.user32
+    SPI_GETWORKAREA = 0x0030
+    rect = wintypes.RECT()
+    success = user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+    if not success:
+        return 1920, 1080
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+
+    return width, height
+def create_gui():
+    root=Tk()
+    root.title(&quot;LGAPP&quot;)
+    root.geometry(&quot;500x0&quot;)
+    root.attributes(&quot;-alpha&quot;,0.0)
+    lgwin=Toplevel(root)
+    lgwin.title(&quot;LGAPP&quot;)
+    lgwin.geometry(&quot;1000x800&quot;)
+    lgwin.transient(root)
+    lgwin.overrideredirect(True)
+    lgwin.attributes(&quot;-alpha&quot;,1.0)
+    lgwin.config(bg=&quot;#ffffff&quot;)
+    ismax=False
+    movex=0#记录偏移量
+    movey=0
+    ismove=False#是否在拖动
+    presize=(1000,800,0,0)
+    def on_root_focus(event):
+        if lgwin and lgwin.winfo_exists():
+            lgwin.lift()
+            lgwin.focus_force()
+    root.bind(&quot;&lt;FocusIn&gt;&quot;, on_root_focus)
+    titlebar=Canvas(lgwin,height=30,bg=&quot;#f0f0f0&quot;)
+    titlebar.pack(side=TOP,fill=X)
+    def draw_titlebar():
+        nonlocal ismax
+        if ismax:
+            maxtxt=&quot;❐&quot;
+            maxsz=10
+        else:
+            maxtxt=&quot;□&quot;
+            maxsz=15
+        titlebar.delete(&quot;all&quot;)
+        winwidth=lgwin.winfo_width()
+        titlebar.create_rectangle(winwidth-30,0,winwidth,30,fill=&quot;#f0f0f0&quot;,outline=&quot;#f0f0f0&quot;,tags=&quot;close_btn&quot;)
+        titlebar.create_text(winwidth-15,15,text=&quot;×&quot;,font=(&quot;consolas&quot;,15),fill=&quot;#000000&quot;)
+        titlebar.create_rectangle(winwidth-60,0,winwidth-30,30,fill=&quot;#f0f0f0&quot;,outline=&quot;#f0f0f0&quot;,tags=&quot;max_btn&quot;)
+        titlebar.create_text(winwidth-45,15,text=maxtxt,font=(&quot;consolas&quot;,maxsz),fill=&quot;#000000&quot;)
+        titlebar.create_rectangle(winwidth-90,0,winwidth-60,30,fill=&quot;#f0f0f0&quot;,outline=&quot;#f0f0f0&quot;,tags=&quot;min_btn&quot;)
+        titlebar.create_text(winwidth-75,15,text=&quot;—&quot;,font=(&quot;consolas&quot;,13),fill=&quot;#000000&quot;)
+        lgwin.update()
+    lgwin.after(100,draw_titlebar)
+    lgwin.bind(&quot;&lt;Configure&gt;&quot;, lambda e: draw_titlebar())
+    def close_window():
+        root.destroy()
+    def max_window():
+        nonlocal ismax,presize
+        ismax=not ismax
+        if ismax:
+            try:
+                presize=(lgwin.winfo_width(),lgwin.winfo_height(),lgwin.winfo_x(),lgwin.winfo_y())
+                work_w,work_h=get_workarea_size()
+                lgwin.geometry(f&quot;{work_w}x{work_h}+0+0&quot;)
+            except:
+                pass
+        else:
+            lgwin.geometry(f&quot;{presize[0]}x{presize[1]}+{presize[2]}+{presize[3]}&quot;)  
+    def min_window():
+        root.iconify()
+    def on_titlebar_click(event):
+        clkitems=titlebar.find_overlapping(event.x,event.y,event.x,event.y)
+        for item in clkitems:
+            tags=titlebar.gettags(item)
+            if &quot;close_btn&quot; in tags:
+                close_window()
+            elif &quot;max_btn&quot; in tags:
+                max_window()
+            elif &quot;min_btn&quot; in tags:
+                min_window()
+    def on_mouse_move(event):
+        draw_titlebar()
+        items = titlebar.find_overlapping(event.x, event.y, event.x, event.y)
+        for item in items:
+            tags=titlebar.gettags(item)
+            if &quot;close_btn&quot; in tags:
+                titlebar.itemconfig(item,fill=&quot;#ffaaaa&quot;)
+            elif &quot;max_btn&quot; in tags:
+                titlebar.itemconfig(item,fill=&quot;#e0e0e0&quot;)
+            elif &quot;min_btn&quot; in tags:
+                titlebar.itemconfig(item,fill=&quot;#e0e0e0&quot;)
+    titlebar.bind(&quot;&lt;Motion&gt;&quot;, on_mouse_move)
+    def start_move(event):
+        nonlocal movex,movey,ismove
+        if not ismax:#最大化不可拖动
+            ismove=True#标记正在拖动
+            movex=event.x_root-lgwin.winfo_x()#记录偏移量
+            movey=event.y_root-lgwin.winfo_y()
+    def do_move(event):
+        if ismove:
+            lgwin.geometry(f&quot;+{event.x_root-movex}+{event.y_root-movey}&quot;)#设置窗口位置
+    def stop_move(event):
+        nonlocal ismove
+        ismove = False#结束拖动
+        on_titlebar_click(event)#防止事件冲突把标题栏点击事件放这里
+    
+    titlebar.bind(&quot;&lt;ButtonPress-1&gt;&quot;,start_move)
+    lgwin.bind(&quot;&lt;B1-Motion&gt;&quot;,do_move)
+    lgwin.bind(&quot;&lt;ButtonRelease-1&gt;&quot;, stop_move)
+    return root,lgwin,titlebar
+</code></pre>
+<p>那么现在，我们就成功地制作了一个自定义标题栏的tkinter窗口</p>
+<p>如果你仔细看会发现这个窗口不能缩放，有兴趣可以自己研究</p>
+
+      </div>
+    </div>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.markdown-render pre code').forEach(function(block) {
+          if (window.hljs) {
+            hljs.highlightElement(block);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

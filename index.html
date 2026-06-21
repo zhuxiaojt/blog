@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客列表</title>
+    <style>
+      * {margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;}
+      body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        color: #333;
+        padding-top: 70px; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        padding-bottom: 40px;
+      }
+      .top-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(108, 99, 255, 0.1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        z-index: 999;
+      }
+      .nav-menu {
+        display: flex;
+        gap: 24px;
+      }
+      .nav-menu a {
+        color: #555;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 8px 0;
+        position: relative;
+        transition: color 0.2s;
+      }
+      .nav-menu a::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #6c63ff;
+        transition: width 0.2s;
+      }
+      .nav-menu a:hover {
+        color: #6c63ff;
+      }
+      .nav-menu a:hover::after {
+        width: 100%;
+      }
+      .nav-menu a.active {
+        color: #6c63ff;
+      }
+      .nav-menu a.active::after {
+        width: 100%;
+      }
+      .appmain {
+        width: 100%;
+        max-width: 800px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        margin: 0 20px;
+        overflow: hidden;
+      }
+      .blog-list { display: flex; flex-direction: column; gap: 24px; }
+      .blog-item {
+        display: flex;
+        gap: 20px;
+        padding: 16px;
+        border-radius: 8px;
+        transition: background 0.2s ease;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid transparent;
+      }
+      .blog-item:hover {
+        background: rgba(108, 99, 255, 0.05);
+        border-color: rgba(108, 99, 255, 0.1);
+      }
+      .blog-item .thumbnail {
+        flex-shrink: 0;
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f0f0f0;
+      }
+      .blog-item .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+      .blog-item .thumbnail.hidden { display: none; }
+      .blog-item .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+      .blog-item .title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+        line-height: 1.4;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .blog-item .title:hover { color: #6c63ff; }
+      .blog-item .keywords {
+        font-size: 13px;
+        color: #999;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .blog-item .keywords .keyword { display: inline-block; }
+      .blog-item .keywords .keyword:not(:last-child)::after { content: ' · '; }
+      .blog-item .description {
+        font-size: 14px;
+        color: #888;
+        line-height: 1.6;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .blog-item .meta {
+        font-size: 13px;
+        color: #aaa;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .loading { text-align: center; padding: 40px 0; color: #888; font-size: 14px; }
+      .empty { text-align: center; padding: 40px 0; color: #aaa; font-size: 14px; }
+      .error { text-align: center; padding: 40px 0; color: #e74c3c; font-size: 14px; }
+      @media (max-width: 640px) {
+        .blog-item { flex-direction: column; gap: 12px; padding: 12px; }
+        .blog-item .thumbnail { width: 100%; height: 180px; }
+        .appmain { padding: 16px; margin: 0 10px; }
+        .blog-item .title { font-size: 16px; }
+        .blog-item .meta { font-size: 12px; gap: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <div class="nav-menu">
+        <a href="./" target="_self" class="active">首页</a>
+      </div>
+    </nav>
+    <div class="appmain">
+      <div id="blogList"><div class="loading">加载中...</div></div>
+    </div>
+    <script>
+      (async function() {
+        const container = document.getElementById('blogList');
+        try {
+          const resp = await fetch('./blogs.json');
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const data = await resp.json();
+          if (!data || data.length === 0) {
+            container.innerHTML = '<div class="empty">暂无文章</div>';
+            return;
+          }
+          let html = '<div class="blog-list">';
+          data.forEach(function(post) {
+            let kwHtml = '';
+            if (post.keywords) {
+              const kw = post.keywords.split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k; });
+              kwHtml = kw.map(function(k) { return '<span class="keyword">' + k + '</span>'; }).join('');
+            }
+            let thumbClass = 'thumbnail';
+            let thumbHtml = '';
+            if (post.thumbnail) {
+              thumbHtml = '<img src="' + post.thumbnail + '" alt="' + post.title + '">';
+            } else {
+              thumbClass += ' hidden';
+            }
+            const displayDate = post.dateFormatted || post.date || '';
+            html += '<a href="' + post.filename + '" class="blog-item">';
+            html += '  <div class="' + thumbClass + '">' + thumbHtml + '</div>';
+            html += '  <div class="content">';
+            html += '    <div class="title">' + post.title + '</div>';
+            if (kwHtml) html += '    <div class="keywords">' + kwHtml + '</div>';
+            if (post.description) html += '    <div class="description">' + post.description + '</div>';
+            html += '    <div class="meta">';
+            if (displayDate) html += '      <span>' + displayDate + '</span>';
+            if (post.author) html += '      <span>' + post.author + '</span>';
+            html += '    </div>';
+            html += '  </div>';
+            html += '</a>';
+          });
+          html += '</div>';
+          container.innerHTML = html;
+        } catch (err) {
+          console.error('加载失败:', err);
+          container.innerHTML = '<div class="error">加载失败，请刷新重试</div>';
+        }
+      })();
+    </script>
+  </body>
+</html>
