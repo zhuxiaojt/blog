@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐</title>
+        <meta name="description" content="npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐">
+    <meta name="keywords" content="Node.js, npm, npx">
+    <meta name="author" content="zhuxiaojt">
+    <meta name="robots" content="index, follow">
+    <meta property="og:description" content="npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐">
+    <meta property="article:author" content="zhuxiaojt">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐">
+    <meta property="og:url" content="https://zhuxiaojt.github.io/blog/2.html">
+    <meta property="og:site_name" content="Blog">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="article:published_time" content="2026-06-14">
+    <meta property="article:modified_time" content="2026-06-14">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐">
+    <meta name="twitter:description" content="npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐">
+    <link rel="canonical" href="https://zhuxiaojt.github.io/blog/2.html">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐",
+      "description": "npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐",
+      "author": { "@type": "Person", "name": "zhuxiaojt" },
+      "datePublished": "2026-06-14",
+      "dateModified": "2026-06-14",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://zhuxiaojt.github.io/blog/2.html" }
+    }
+    </script>
+
+    <style>
+      * {margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;}
+      body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        color: #333;
+        padding-top: 70px; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+      }
+      .top-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(108, 99, 255, 0.1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        z-index: 999;
+      }
+      .nav-menu {
+        display: flex;
+        gap: 24px;
+      }
+      .nav-menu a {
+        color: #555;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 8px 0;
+        position: relative;
+        transition: color 0.2s;
+      }
+      .nav-menu a::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #6c63ff;
+        transition: width 0.2s;
+      }
+      .nav-menu a:hover {
+        color: #6c63ff;
+      }
+      .nav-menu a:hover::after {
+        width: 100%;
+      }
+      .nav-menu a.active {
+        color: #6c63ff;
+      }
+      .nav-menu a.active::after {
+        width: 100%;
+      }
+      .appmain {
+        width: 100%;
+        max-width: 800px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        margin: 0 auto;
+        overflow: hidden;
+      }
+      .markdown-render {
+        padding: 0;
+        overflow-y: auto;
+      }
+      .markdown-render h1 {
+        font-size: 24px;
+        color: #333;
+        margin: 16px 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+      }
+      .markdown-render h2 {
+        font-size: 20px;
+        color: #333;
+        margin: 14px 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 6px;
+      }
+      .markdown-render h3 {
+        font-size: 18px;
+        color: #333;
+        margin: 12px 0;
+      }
+      .markdown-render p {
+        margin: 8px 0;
+        line-height: 1.8;
+      }
+      .markdown-render ul, .markdown-render ol {
+        margin: 8px 0 8px 24px;
+        line-height: 1.8;
+      }
+      .markdown-render code {
+        padding: 2px 6px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      .markdown-render pre {
+        padding: 16px;
+        background: #f8f8f8;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 12px 0;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      .markdown-render pre code {
+        padding: 0;
+        background: transparent;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      .markdown-render blockquote {
+        border-left: 4px solid #6c63ff;
+        padding: 8px 16px;
+        background: #f9f9f9;
+        margin: 12px 0;
+      }
+      .markdown-render a {
+        color: #6c63ff;
+        text-decoration: none;
+      }
+      .markdown-render a:hover {
+        text-decoration: underline;
+      }
+      .markdown-render img {
+        max-width: 100%;
+        border-radius: 8px;
+        margin: 12px 0;
+      }
+      .markdown-render table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 16px 0;
+      }
+      .markdown-render th, .markdown-render td {
+        border: 1px solid #e0e0e0;
+        padding: 8px 12px;
+        text-align: left;
+      }
+      .markdown-render th {
+        background: #f5f5f5;
+      }
+      .katex-error {
+        color: #e74c3c;
+        background: #fde8e8;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <div class="nav-menu" id="navMenu">
+        <a href="./" target="_self">首页</a>
+      </div>
+    </nav>
+    <div class="appmain" style="max-width: 800px;">
+      <h1 class="blog-title" id="blog-title">npx 为何如此之慢？浅谈 npx 速度慢的原因及工具推荐</h1>
+      <div class="blog-meta" id="blog-meta" style="color:gray;font-family:Consolas;">2026-06-14</div>
+      <div class="markdown-render" id="markdownRender">
+        <h2>实测数据</h2>
+<p>我在 Windows 环境下，使用 PowerShell 的 <code>Measure-Command</code> 对 pnpm 命令进行了计时测试。</p>
+<p>断网环境下：</p>
+<pre><code class="language-powershell">Measure-Command { cmd /c &quot;npx pnpm --version&quot; }
+# 耗时：1.34 秒
+</code></pre>
+<p>联网环境下：</p>
+<pre><code class="language-powershell">Measure-Command { cmd /c &quot;npx pnpm --version&quot; }
+# 耗时：2.33 秒
+</code></pre>
+<p>作为对比，直接执行本地安装的 pnpm：</p>
+<pre><code class="language-powershell">Measure-Command { cmd /c &quot;pnpm --version&quot; }
+# 耗时：0.50 秒
+</code></pre>
+<p>从数据可以看出：</p>
+<ul>
+<li>断网时 npx 耗时 1.34 秒，联网时耗时 2.33 秒</li>
+<li>两者都明显慢于直接执行本地命令的 0.50 秒</li>
+<li>联网比断网还要慢约 1 秒</li>
+</ul>
+<p>另外，在不同的网络环境和设备环境下，数据可能会有差异。</p>
+<h2>原因分析</h2>
+<p>npx 的设计目标是允许用户执行任何 npm 包命令，无需提前安装。为实现这一目标，npx 在执行时需要完成以下工作：</p>
+<ol>
+<li>查询 npm registry，获取目标包的最新版本信息</li>
+<li>检查本地是否已安装该包</li>
+<li>根据版本信息决定是否需要下载或更新</li>
+<li>执行命令</li>
+</ol>
+<p>断网时，npx 会尝试连接 registry 但超时失败，这个过程需要等待，所以仍有 1.34 秒的开销。</p>
+<p>联网时，npx 成功查询 registry，但网络请求本身需要时间，因此耗时更长，达到 2.33 秒。</p>
+<p>即使目标包已经存在于项目的 <code>node_modules/.bin</code> 目录或全局包目录中，registry 查询这一步仍然会执行。这是 npx 的设计逻辑决定的：它需要确保执行的版本是最新的，或者至少是与用户预期一致的。</p>
+<p>简单来说，npx 是为&quot;通用场景&quot;设计的——它不知道你本地有没有装，所以每次都要去 registry 确认一下。这种设计在临时执行未安装包时很有用，但在执行本地已安装包时就成了多余开销。</p>
+<h2>替代工具推荐</h2>
+<p>如果使用场景仅限于执行项目本地已安装的包，这里推荐一个轻量级替代工具：<strong>binpx</strong>。</p>
+<p>它的核心逻辑很简单：</p>
+<ul>
+<li>从当前目录向上查找 <code>node_modules/.bin</code> 目录</li>
+<li>找到目标命令后直接执行</li>
+<li>不查询 registry，不检查版本更新</li>
+</ul>
+<p>在相同环境下测试：</p>
+<pre><code class="language-powershell">Measure-Command { cmd /c &quot;binpx pnpm --version&quot; }
+# 耗时：0.68 秒
+</code></pre>
+<p>与直接执行本地 bin 的 0.50 秒非常接近，比 npx 的 2.33 秒快得多。</p>
+<p>binpx 还有一些额外功能：</p>
+<ul>
+<li>支持 Node.js 模块调用，可作为其他工具的依赖（具体详见项目 README）</li>
+<li>本地找不到时自动降级到系统 PATH，兼容全局安装的包</li>
+<li>统一的命令格式，避免不同包管理器（npm、pnpm、yarn）的差异</li>
+</ul>
+<p>可以直接使用 npm 安装 binpx：</p>
+<pre><code class="language-bash"># 添加至项目开发依赖
+npm install -D binpx
+# 或全局安装
+npm install -g binpx
+</code></pre>
+<p>项目链接：</p>
+<ul>
+<li>GitHub: <a href="https://github.com/zhuxiaojt/binpx">https://github.com/zhuxiaojt/binpx</a></li>
+<li>npm: <a href="https://www.npmjs.com/package/binpx">https://www.npmjs.com/package/binpx</a></li>
+</ul>
+
+      </div>
+    </div>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.markdown-render pre code').forEach(function(block) {
+          if (window.hljs) {
+            hljs.highlightElement(block);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
